@@ -3,27 +3,30 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>拼图游戏</title>
+<title>kiki拼图游戏</title>
+
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: linear-gradient(180deg, #f7f7f7, #eaeaea);
+  background: #f6f7f9;
   color: #222;
   text-align: center;
 }
 
 main {
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 auto;
   padding: 20px;
 }
 
 h1 {
-  font-size: 28px;
-  margin: 12px 0 16px;
+  font-size: 30px;
+  margin: 12px 0 18px;
 }
 
 .controls {
@@ -34,7 +37,8 @@ h1 {
   margin-bottom: 12px;
 }
 
-button, select {
+button,
+select {
   padding: 9px 13px;
   font-size: 15px;
   border-radius: 10px;
@@ -49,19 +53,26 @@ button {
 .info {
   display: flex;
   justify-content: center;
-  gap: 22px;
+  gap: 20px;
   margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.puzzle-wrap {
+  position: relative;
+  width: min(90vw, 540px);
+  height: min(90vw, 540px);
+  margin: 0 auto;
 }
 
 .puzzle {
-  width: min(90vw, 500px);
-  height: min(90vw, 500px);
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
   display: grid;
   gap: 2px;
   background: #ddd;
   border: 3px solid #ddd;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   touch-action: manipulation;
 }
@@ -79,24 +90,102 @@ button {
   z-index: 2;
 }
 
+.watermark {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-size: clamp(42px, 13vw, 96px);
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  letter-spacing: 2px;
+}
+
+.watermark.show {
+  display: flex;
+}
+
 #message {
   margin-top: 16px;
-  min-height: 28px;
+  min-height: 30px;
   font-size: 18px;
   font-weight: bold;
 }
 
+.follow-box {
+  display: none;
+  margin: 16px auto 0;
+  padding: 14px;
+  max-width: 520px;
+  border-radius: 14px;
+  background: #eef8f1;
+  border: 1px solid #b9e6c8;
+}
+
+.follow-box.show {
+  display: block;
+}
+
+.follow-box a {
+  color: #0f7a3b;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.levels {
+  margin-top: 22px;
+}
+
+.level-title {
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.level-buttons {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.level-btn {
+  height: 54px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  background: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.level-btn.active {
+  border-color: #2ecc71;
+  background: #eafff1;
+}
+
+.level-btn.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hint {
-  margin-top: 10px;
+  margin-top: 16px;
   font-size: 13px;
   color: #666;
+}
+
+@media (max-width: 520px) {
+  .level-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 </style>
 </head>
 
 <body>
 <main>
-  <h1>拼图游戏</h1>
+  <h1>🧩 拼图游戏 🧩</h1>
 
   <div class="controls">
     <label>
@@ -113,14 +202,31 @@ button {
   </div>
 
   <div class="info">
+    <span>关卡：<b id="stageText">1 / 6</b></span>
     <span>步数：<b id="moves">0</b></span>
     <span>时间：<b id="timer">0</b> 秒</span>
   </div>
 
-  <div id="puzzle" class="puzzle"></div>
+  <div class="puzzle-wrap">
+    <div id="puzzle" class="puzzle"></div>
+    <div id="watermark" class="watermark">misokuro</div>
+  </div>
 
   <p id="message"></p>
-  <p class="hint">点击两块拼图即可交换位置。手机也可以直接点击操作。</p>
+
+  <div id="followBox" class="follow-box">
+    🎉 通关成功！欢迎关注我的 X：  
+    <a href="https://x.com/misokuro14" target="_blank">
+      @misokuro14
+    </a>
+  </div>
+
+  <section class="levels">
+    <div class="level-title">选择关卡</div>
+    <div id="levelButtons" class="level-buttons"></div>
+  </section>
+
+  <p class="hint">提示：点击两块拼图即可交换位置，完成后会自动出现水印。</p>
 </main>
 
 <script>
@@ -131,8 +237,19 @@ const shareBtn = document.getElementById("shareBtn");
 const movesEl = document.getElementById("moves");
 const timerEl = document.getElementById("timer");
 const messageEl = document.getElementById("message");
+const watermarkEl = document.getElementById("watermark");
+const followBox = document.getElementById("followBox");
+const stageText = document.getElementById("stageText");
+const levelButtons = document.getElementById("levelButtons");
+
+const TOTAL_STAGES = 6;
+const X_ACCOUNT = "misokuro14";
+const WATERMARK_TEXT = "misokuro14";
 
 let level = 3;
+let stage = 1;
+let unlockedStage = Number(localStorage.getItem("unlockedStage")) || 1;
+
 let tiles = [];
 let selectedTile = null;
 let moves = 0;
@@ -141,15 +258,33 @@ let timer = null;
 let gameStarted = false;
 let finished = false;
 
-function getLevelFromUrl() {
+function getParams() {
   const params = new URLSearchParams(window.location.search);
-  const value = Number(params.get("level"));
-  return [3, 4, 5].includes(value) ? value : 3;
+
+  const urlLevel = Number(params.get("level"));
+  const urlStage = Number(params.get("stage"));
+
+  level = [3, 4, 5].includes(urlLevel) ? urlLevel : 3;
+  stage = urlStage >= 1 && urlStage <= TOTAL_STAGES ? urlStage : 1;
+
+  if (stage > unlockedStage) {
+    stage = unlockedStage;
+  }
+}
+
+function updateUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("level", level);
+  url.searchParams.set("stage", stage);
+  window.history.replaceState({}, "", url);
 }
 
 function initGame() {
-  level = getLevelFromUrl();
+  getParams();
+  updateUrl();
+
   levelSelect.value = level;
+  stageText.textContent = `${stage} / ${TOTAL_STAGES}`;
 
   tiles = [];
   selectedTile = null;
@@ -159,13 +294,18 @@ function initGame() {
   finished = false;
 
   clearInterval(timer);
+
   movesEl.textContent = moves;
   timerEl.textContent = seconds;
   messageEl.textContent = "";
+  followBox.classList.remove("show");
+  watermarkEl.classList.remove("show");
+  watermarkEl.textContent = WATERMARK_TEXT;
 
   createTiles();
   shuffleTiles();
   renderTiles();
+  renderStageButtons();
 }
 
 function createTiles() {
@@ -178,13 +318,18 @@ function createTiles() {
 
 function shuffleTiles() {
   for (let i = tiles.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(randomByStage(stage, i) * (i + 1));
     [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
   }
 
   if (isSolved()) {
     shuffleTiles();
   }
+}
+
+function randomByStage(stageNumber, salt) {
+  const x = Math.sin(stageNumber * 999 + salt * 77 + Date.now()) * 10000;
+  return x - Math.floor(x);
 }
 
 function renderTiles() {
@@ -200,7 +345,8 @@ function renderTiles() {
     const col = tile.id % level;
 
     div.style.backgroundSize = `${level * 100}% ${level * 100}%`;
-    div.style.backgroundPosition = `${(col / (level - 1)) * 100}% ${(row / (level - 1)) * 100}%`;
+    div.style.backgroundPosition =
+      `${(col / (level - 1)) * 100}% ${(row / (level - 1)) * 100}%`;
 
     div.addEventListener("click", () => handleTileClick(index));
 
@@ -257,23 +403,60 @@ function startTimer() {
 function finishGame() {
   finished = true;
   clearInterval(timer);
+
+  watermarkEl.classList.add("show");
+  followBox.classList.add("show");
+
   messageEl.textContent = `完成！你用了 ${moves} 步，${seconds} 秒。`;
+
+  if (stage === unlockedStage && unlockedStage < TOTAL_STAGES) {
+    unlockedStage++;
+    localStorage.setItem("unlockedStage", unlockedStage);
+    messageEl.textContent += ` 已解锁第 ${unlockedStage} 关！`;
+  }
+
+  renderStageButtons();
 }
 
-function updateUrlLevel(newLevel) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("level", newLevel);
-  window.history.replaceState({}, "", url);
+function renderStageButtons() {
+  levelButtons.innerHTML = "";
+
+  for (let i = 1; i <= TOTAL_STAGES; i++) {
+    const btn = document.createElement("button");
+    btn.className = "level-btn";
+    btn.textContent = i;
+
+    if (i === stage) {
+      btn.classList.add("active");
+    }
+
+    if (i > unlockedStage) {
+      btn.classList.add("locked");
+      btn.textContent = `${i} 🔒`;
+    }
+
+    btn.addEventListener("click", () => {
+      if (i > unlockedStage) return;
+
+      stage = i;
+      updateUrl();
+      initGame();
+    });
+
+    levelButtons.appendChild(btn);
+  }
 }
 
 levelSelect.addEventListener("change", () => {
-  updateUrlLevel(levelSelect.value);
+  level = Number(levelSelect.value);
+  updateUrl();
   initGame();
 });
 
 restartBtn.addEventListener("click", initGame);
 
 shareBtn.addEventListener("click", async () => {
+  updateUrl();
   const shareUrl = window.location.href;
 
   try {
